@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AltiCan - Home canning altitude adjustment</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#2a1d14; color:#f6ebdf; line-height:1.5; }
+  .wrap { max-width:680px; margin:0 auto; padding:26px 18px 60px; }
+  a { color:#f2b45c; } h1 { font-size:28px; } h1 span { color:#f2b45c; } .sub { color:#c9b39d; margin:4px 0 18px; }
+  .card { background:#3b2a1e; border-radius:14px; padding:16px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:#c9b39d; margin:10px 0 4px; }
+  input, select { width:100%; padding:11px; border-radius:9px; border:1px solid #5a4231; background:#2a1d14; color:#f6ebdf; font-size:16px; }
+  .row { display:flex; gap:10px; } .row > div { flex:1; }
+  .seg { display:flex; gap:8px; flex-wrap:wrap; } .seg button { flex:1; min-width:120px; padding:11px; border-radius:9px; border:1px solid #5a4231; background:#2a1d14; color:#c9b39d; font-size:15px; cursor:pointer; }
+  .seg button.on { background:#f2b45c; color:#2a1d14; font-weight:700; border-color:#f2b45c; }
+  .big { font-size:34px; font-weight:800; color:#f2b45c; } .lbl { font-size:13px; color:#c9b39d; }
+  .grid { display:flex; gap:14px; flex-wrap:wrap; } .grid > div { flex:1; min-width:170px; }
+  .warn { background:#4d2a1c; border:1px solid #c8693f; color:#ffd8c6; padding:12px; border-radius:10px; margin-top:12px; }
+  .note { font-size:13px; color:#c9b39d; margin-top:10px; } h2 { font-size:17px; margin-bottom:6px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; } td, th { padding:6px 4px; border-bottom:1px solid #4d3929; text-align:left; } th { color:#c9b39d; font-weight:600; } tr.hit td { color:#f2b45c; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Alti<span>Can</span></h1>
+  <div class="sub">Canning times and pressures change with altitude. Enter what your tested recipe says for sea level.</div>
+  <div class="card">
+    <label>Canner</label>
+    <div class="seg" id="canner"><button data-v="boil" class="on">Boiling water</button><button data-v="dial">Pressure, dial gauge</button><button data-v="weighted">Pressure, weighted gauge</button></div>
+    <div id="foodwrap"><label>Food</label>
+    <div class="seg" id="food"><button data-v="standard" class="on">Fruit, pickles, tomatoes</button><button data-v="jelly">Jam, jelly, preserves</button></div></div>
+    <div class="row"><div><label for="base">Process time in the recipe (0 to 1,000 ft), minutes</label><input id="base" type="number" min="1" step="1" value="25"></div>
+    <div><label for="alt">Your altitude</label><div class="row"><input id="alt" type="number" min="0" step="50" value="2500"><select id="u" style="max-width:90px"><option value="ft">ft</option><option value="m">m</option></select></div></div></div>
+  </div>
+  <div class="card" id="out"></div>
+  <div class="card" id="tbl"></div>
+  <div class="card"><h2>Read this first</h2>
+    <div class="note" style="margin-top:0">Use only tested recipes (USDA Complete Guide to Home Canning, NCHFP, extension services). Low-acid foods such as plain vegetables, meat and soup must be pressure canned, never boiling-water canned. Check a dial gauge for accuracy every year and replace it if it is off by more than 2 pounds. Cooling jars in cold water, or too little time, can leave food unsafe. This tool follows the generic university-extension tables and does not replace your recipe.<br><br>
+    Sources: <a href="https://www2.ca.uky.edu/agc/pubs/FCS3/FCS3591/FCS3591.pdf">University of Kentucky FCS3-591, Altitude and Home Canning</a>; <a href="https://nchfp.uga.edu/how/can/general-information/selecting-the-correct-processing-time">NCHFP, Selecting the Correct Processing Time</a>; <a href="https://ext.vt.edu/content/dam/pubs_ext_vt_edu/348/348-585/348-585_PDF.pdf">Virginia Cooperative Extension 348-585</a>. Boiling point estimate is a rough 1&deg;F per 500 ft. <a href="index.html">About</a></div>
+  </div>
+</div>
+<script src="engine.js"></script>
+<script>
+var canner = 'boil', food = 'standard', $ = function (i) { return document.getElementById(i); };
+function seg(id, set) { var b = $(id).querySelectorAll('button'); for (var i = 0; i < b.length; i++) b[i].onclick = function () { for (var j = 0; j < b.length; j++) b[j].className = ''; this.className = 'on'; set(this.getAttribute('data-v')); render(); }; }
+seg('canner', function (v) { canner = v; }); seg('food', function (v) { food = v; });
+function render() {
+  $('foodwrap').style.display = canner === 'boil' ? 'block' : 'none';
+  var base = parseFloat($('base').value), a = parseFloat($('alt').value);
+  if (!(base > 0) || isNaN(a) || a < 0) { $('out').innerHTML = '<div class="lbl">Enter the recipe time and your altitude.</div>'; $('tbl').innerHTML = ''; return; }
+  var ft = Alt.toFt(a, $('u').value), h = '', t = '', bf = Alt.boilF(ft);
+  h += '<div class="lbl">' + Math.round(ft).toLocaleString() + ' ft (' + Math.round(ft / Alt.FT_PER_M).toLocaleString() + ' m), band ' + Alt.bandLabel(ft) + '. Water boils at about ' + bf.toFixed(0) + '&deg;F (' + Alt.fToC(bf).toFixed(0) + '&deg;C) here.</div>';
+  if (canner === 'boil') {
+    var r = Alt.boiling(base, ft, food);
+    if (!r.ok) h += '<div class="warn" id="na">' + r.reason + '</div>';
+    else {
+      h += '<div class="grid"><div><div class="lbl">Process for</div><div class="big" id="total">' + r.total + ' min</div></div><div><div class="lbl">Added for altitude</div><div class="big" id="add">' + (r.add ? '+' + r.add + ' min' : 'none') + '</div></div></div><div class="note" id="rule">' + r.rule + '. Start timing when the water is at a full rolling boil.</div>';
+      if (food === 'standard') t = '<h2>Rule used</h2><table><tr><th>Altitude</th><th>Recipe under 20 min</th><th>20 min or longer</th></tr><tr' + (ft <= 1000 ? ' class="hit"' : '') + '><td>0 to 1,000 ft</td><td>as written</td><td>as written</td></tr><tr' + (ft > 1000 && ft <= 3000 ? ' class="hit"' : '') + '><td>1,001 to 3,000 ft</td><td>+5 min</td><td>+5 min</td></tr><tr' + (ft > 3000 && ft <= 6000 ? ' class="hit"' : '') + '><td>3,001 to 6,000 ft</td><td>+5 min</td><td>+10 min</td></tr></table>';
+    }
+  } else {
+    var p = Alt.pressure(base, ft, canner);
+    if (!p.ok) h += '<div class="warn" id="na">' + p.reason + '</div>';
+    else {
+      h += '<div class="grid"><div><div class="lbl">Canner pressure</div><div class="big" id="psi">' + p.psi + ' lb</div></div><div><div class="lbl">Process for</div><div class="big" id="total">' + p.total + ' min</div></div></div><div class="note" id="rule">' + p.rule + '. Use this for recipes written for ' + (canner === 'dial' ? '11 lb on a dial gauge' : '10 lb on a weighted gauge') + ' at sea level. If your recipe gives its own pressures by altitude, follow the recipe.</div>';
+      var rows = [['0 to 1,000 ft', 10, 11], ['1,001 to 2,000 ft', 15, 11], ['2,001 to 4,000 ft', 15, 12], ['4,001 to 6,000 ft', 15, 13]], tb = '<h2>Pressure by altitude</h2><table><tr><th>Altitude</th><th>Weighted gauge</th><th>Dial gauge</th></tr>';
+      var hit = ft <= 1000 ? 0 : ft <= 2000 ? 1 : ft <= 4000 ? 2 : 3;
+      rows.forEach(function (r, i) { tb += '<tr' + (i === hit ? ' class="hit"' : '') + '><td>' + r[0] + '</td><td>' + r[1] + ' lb</td><td>' + r[2] + ' lb</td></tr>'; }); t = tb + '</table>';
+    }
+  }
+  $('out').innerHTML = h; $('tbl').innerHTML = t;
+}
+['base', 'alt', 'u'].forEach(function (i) { $(i).oninput = render; $(i).onchange = render; });
+render();
+</script>
+</body>
+</html>
